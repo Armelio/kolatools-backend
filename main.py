@@ -1,10 +1,10 @@
 import os
 import re
 import tempfile
-import subprocess
+from io import BytesIO
 from pathlib import Path
 from fastapi import FastAPI, Query, HTTPException
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 import yt_dlp
 
 app = FastAPI(title="Kola YouTube Downloader")
@@ -32,7 +32,6 @@ def download(
 
     url = f"https://www.youtube.com/watch?v={v}"
     safe_title = sanitize_filename(t)[:100] if t else "audio"
-
     is_audio = f in ("mp3", "wav", "m4a")
 
     with tempfile.TemporaryDirectory(suffix="-yt-dl") as tmp_dir:
@@ -55,39 +54,25 @@ def download(
             ]
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                try:
-                    ydl.download([url])
-                except Exception as e:
-                    raise HTTPException(500, f"Erreur téléchargement: {str(e)[:200]}")
+                ydl.download([url])
 
             ext = f if f != "m4a" else "m4a"
             file_path = os.path.join(tmp_dir, f"audio.{ext}")
             if not os.path.exists(file_path):
-                # yt-dlp sometimes uses different extension
                 files = list(Path(tmp_dir).glob("*"))
-                if not files:
-                    files = list(Path(tmp_dir).glob("audio.*"))
                 if files:
                     file_path = str(files[0])
 
             if not os.path.exists(file_path):
                 raise HTTPException(500, "Fichier audio non trouvé après conversion")
 
-            mime = (
-                "audio/mp4"
-                if ext in ("m4a", "mp3")
-                else "audio/wav"
-            )
-            media_type = mime
+            media_type = "audio/mp4" if ext in ("m4a", "mp3") else "audio/wav"
             filename = f"{safe_title}.{ext}"
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                try:
-                    ydl.download([url])
-                except Exception as e:
-                    raise HTTPException(500, f"Erreur téléchargement: {str(e)[:200]}")
+                ydl.download([url])
 
             files = list(Path(tmp_dir).glob("*"))
             if not files:
@@ -96,8 +81,8 @@ def download(
             media_type = "video/mp4"
             filename = f"{safe_title}.mp4"
 
-        return FileResponse(
-            path=file_path,
-            media_type=media_type,
-            filename=filename,
-        )
+        data = BytesIO(Path(file_path).read_bytes())
+
+    return Response(content=data.getvalue(), media_type=media_type, headers={
+        "Content-Disposition": f'attachment; filename="{filename}"'
+    })

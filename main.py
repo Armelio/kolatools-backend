@@ -9,11 +9,27 @@ import yt_dlp
 
 app = FastAPI(title="Kola YouTube Downloader")
 
+MIME_MAP = {
+    "m4a": "audio/mp4",
+    "mp3": "audio/mpeg",
+    "wav": "audio/wav",
+    "webm": "audio/webm",
+    "opus": "audio/opus",
+    "mp4": "video/mp4",
+}
+
 
 def sanitize_filename(name: str) -> str:
     name = re.sub(r'[\\/:*?"<>|]', "_", name)
     name = re.sub(r'[^\x20-\x7E]', "_", name)
     return name.strip()
+
+
+def get_file(tmp_dir: str) -> str:
+    files = [f for f in Path(tmp_dir).iterdir() if f.is_file()]
+    if files:
+        return str(files[0])
+    raise HTTPException(500, "Fichier non trouvé après téléchargement")
 
 
 @app.get("/health")
@@ -45,42 +61,26 @@ def download(
 
         if is_audio:
             ydl_opts["format"] = "bestaudio/best"
-            ydl_opts["postprocessors"] = [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": f if f != "m4a" else "aac",
-                    "preferredquality": "192",
-                }
-            ]
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-
-            ext = f if f != "m4a" else "m4a"
-            file_path = os.path.join(tmp_dir, f"audio.{ext}")
-            if not os.path.exists(file_path):
-                files = list(Path(tmp_dir).glob("*"))
-                if files:
-                    file_path = str(files[0])
-
-            if not os.path.exists(file_path):
-                raise HTTPException(500, "Fichier audio non trouvé après conversion")
-
-            media_type = "audio/mp4" if ext in ("m4a", "mp3") else "audio/wav"
-            filename = f"{safe_title}.{ext}"
         else:
             ydl_opts["format"] = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            try:
                 ydl.download([url])
+            except Exception as e:
+                raise HTTPException(500, f"Erreur téléchargement: {str(e)[:300]}")
 
-            files = list(Path(tmp_dir).glob("*"))
-            if not files:
-                raise HTTPException(500, "Fichier vidéo non trouvé")
-            file_path = str(files[0])
+        file_path = get_file(tmp_dir)
+        actual_ext = Path(file_path).suffix[1:] or "m4a"
+
+        if is_audio:
+            ext = actual_ext
+            media_type = MIME_MAP.get(ext, "audio/mp4")
+        else:
+            ext = "mp4"
             media_type = "video/mp4"
-            filename = f"{safe_title}.mp4"
 
+        filename = f"{safe_title}.{ext}"
         data = BytesIO(Path(file_path).read_bytes())
 
     return Response(content=data.getvalue(), media_type=media_type, headers={

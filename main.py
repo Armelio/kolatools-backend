@@ -1,5 +1,6 @@
 import os
 import re
+import socket
 import tempfile
 from io import BytesIO
 from pathlib import Path
@@ -8,6 +9,16 @@ from fastapi.responses import Response
 import yt_dlp
 
 app = FastAPI(title="Kola YouTube Downloader")
+
+PROXY = None
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(1)
+    s.connect(("127.0.0.1", 1080))
+    s.close()
+    PROXY = "socks5://127.0.0.1:1080"
+except Exception:
+    pass
 
 MIME_MAP = {
     "m4a": "audio/mp4",
@@ -34,7 +45,7 @@ def get_file(tmp_dir: str) -> str:
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "proxy": PROXY is not None}
 
 
 @app.get("/download")
@@ -62,11 +73,16 @@ def download(
                     "player_client": ["tv_downgraded", "web", "android_vr"],
                 }
             },
+            "remote_components": {"ejs:github"},
         }
 
-        node_path = "/usr/local/bin/node"
-        if os.path.exists(node_path):
-            ydl_opts["js_runtimes"] = [node_path]
+        if PROXY:
+            ydl_opts["proxy"] = PROXY
+
+        for p in ["/usr/bin/node", "/usr/local/bin/node"]:
+            if os.path.exists(p):
+                ydl_opts["js_runtimes"] = {"node": {}}
+                break
 
         if is_audio:
             ydl_opts["format"] = "bestaudio/best"

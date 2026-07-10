@@ -57,7 +57,16 @@ def download(
             "outtmpl": output_template,
             "nocheckcertificate": True,
             "prefer_free_formats": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["tv_downgraded", "web", "android_vr"],
+                }
+            },
         }
+
+        node_path = "/usr/local/bin/node"
+        if os.path.exists(node_path):
+            ydl_opts["js_runtimes"] = [node_path]
 
         if is_audio:
             ydl_opts["format"] = "bestaudio/best"

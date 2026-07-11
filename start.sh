@@ -3,6 +3,7 @@
 echo "=== Kola Backend Startup ==="
 
 PORT=${PORT:-8000}
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # --- Download pre-built binaries to /tmp/ (writable at runtime) ---
 
@@ -64,4 +65,5 @@ fi
 
 # --- Start uvicorn ---
 echo "Starting uvicorn on port $PORT..."
+cd "$SCRIPT_DIR"
 exec uvicorn main:app --host 0.0.0.0 --port $PORT

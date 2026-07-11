@@ -26,8 +26,8 @@ fi
 if [ ! -f /tmp/wireproxy ]; then
   echo "Downloading wireproxy..."
   curl -fsSL -o /tmp/wireproxy.tar.gz https://github.com/windtf/wireproxy/releases/download/v1.1.2/wireproxy_linux_amd64.tar.gz
-  tar -xzf /tmp/wireproxy.tar.gz -C /tmp/ --strip-components=1 && \
-  chmod +x /tmp/wireproxy && \
+  tar -xzf /tmp/wireproxy.tar.gz -C /tmp/ && \
+  find /tmp -name wireproxy -type f -exec chmod +x {} \; -exec mv {} /tmp/wireproxy \; && \
   echo "wireproxy ready" || echo "WARNING: wireproxy download failed"
 fi
 

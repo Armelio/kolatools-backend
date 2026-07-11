@@ -25,7 +25,7 @@ fi
 # wireproxy (WireGuard userspace -> SOCKS5)
 if [ ! -f /tmp/wireproxy ]; then
   echo "Downloading wireproxy..."
-  curl -fsSL -o /tmp/wireproxy.tar.gz https://github.com/pufferffish/wireproxy/releases/download/v1.1.3/wireproxy_linux_amd64.tar.gz && \
+  curl -fsSL -o /tmp/wireproxy.tar.gz https://github.com/windtf/wireproxy/releases/download/v1.1.2/wireproxy_linux_amd64.tar.gz
   tar -xzf /tmp/wireproxy.tar.gz -C /tmp/ --strip-components=1 && \
   chmod +x /tmp/wireproxy && \
   echo "wireproxy ready" || echo "WARNING: wireproxy download failed"

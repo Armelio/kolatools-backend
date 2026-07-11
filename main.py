@@ -79,7 +79,7 @@ def download(
         if PROXY:
             ydl_opts["proxy"] = PROXY
 
-        for p in ["/usr/bin/node", "/usr/local/bin/node"]:
+        for p in ["/usr/bin/node", "/usr/local/bin/node", "/tmp/node-v20.18.0-linux-x64/bin/node"]:
             if os.path.exists(p):
                 ydl_opts["js_runtimes"] = {"node": {}}
                 break
